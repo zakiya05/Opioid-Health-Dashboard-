@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Opioid Risk Dashboard - Tableau WDC</title>
+    <meta charset="utf-8">
+    <script src="https://connectors.tableau.com/libs/tableauwdc-2.3.latest.js" type="text/javascript"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #667eea;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .form-group {
+            margin-bottom: 25px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #333;
+            font-size: 16px;
+        }
+        input[type="number"] {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 18px;
+            transition: border 0.3s;
+        }
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button {
+            background-color: #667eea;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            width: 100%;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background-color: #5568d3;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .info {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            border-left: 4px solid #667eea;
+        }
+        .info p {
+            margin: 5px 0;
+            color: #555;
+            font-size: 14px;
+        }
+        .info strong {
+            color: #667eea;
+        }
+        .loading {
+            text-align: center;
+            display: none;
+            margin-top: 20px;
+            color: #667eea;
+        }
+        .error {
+            background-color: #fee;
+            color: #c00;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 20px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 Opioid Risk Dashboard</h1>
+        
+        <div class="info">
+            <p><strong>Step 1:</strong> Enter a patient ID below</p>
+            <p><strong>Step 2:</strong> Click "Load Data into Tableau"</p>
+            <p><strong>Step 3:</strong> Tableau will automatically load the patient's data</p>
+        </div>
+        
+        <div class="form-group">
+            <label for="patientId">Patient ID:</label>
+            <input type="number" 
+                   id="patientId" 
+                   placeholder="Enter patient ID (e.g., 12345)" 
+                   autofocus />
+        </div>
+        
+        <button id="submitButton">Load Data into Tableau</button>
+        
+        <div class="loading" id="loadingMsg">
+            <p>⏳ Loading patient data...</p>
+        </div>
+        
+        <div class="error" id="errorMsg"></div>
+    </div>
+    
+    <script type="text/javascript">
+        (function() {
+            var myConnector = tableau.makeConnector();
+            
+            myConnector.getSchema = function(schemaCallback) {
+                var cols = [
+                    {id: "patient_id", dataType: tableau.dataTypeEnum.int},
+                    {id: "age", dataType: tableau.dataTypeEnum.int},
+                    {id: "gender", dataType: tableau.dataTypeEnum.string},
+                    {id: "race", dataType: tableau.dataTypeEnum.string},
+                    {id: "marital_status", dataType: tableau.dataTypeEnum.string},
+                    {id: "total_encounters", dataType: tableau.dataTypeEnum.int},
+                    
+                    {id: "risk_score", dataType: tableau.dataTypeEnum.int},
+                    {id: "risk_level", dataType: tableau.dataTypeEnum.string},
+                    {id: "risk_factors", dataType: tableau.dataTypeEnum.string},
+    
+                    {id: "data_type", dataType: tableau.dataTypeEnum.string},
+                    
+                    {id: "medication_name", dataType: tableau.dataTypeEnum.string},
+                    {id: "strength", dataType: tableau.dataTypeEnum.string},
+                    {id: "start_date", dataType: tableau.dataTypeEnum.datetime},
+                    {id: "stop_date", dataType: tableau.dataTypeEnum.datetime},
+                    {id: "duration_minutes", dataType: tableau.dataTypeEnum.int},
+                    {id: "frequency", dataType: tableau.dataTypeEnum.string},
+                    {id: "days_since_prescribed", dataType: tableau.dataTypeEnum.int},
+                    {id: "duration_category", dataType: tableau.dataTypeEnum.string},
+                    {id: "potency_level", dataType: tableau.dataTypeEnum.string},
+                    
+                    {id: "diagnosis_code", dataType: tableau.dataTypeEnum.string},
+                    {id: "diagnosis_description", dataType: tableau.dataTypeEnum.string},
+                    {id: "diagnosis_priority", dataType: tableau.dataTypeEnum.int},
+                    {id: "diagnosis_type", dataType: tableau.dataTypeEnum.string},
+                    {id: "diagnosis_category", dataType: tableau.dataTypeEnum.string},
+                    {id: "diagnosis_date", dataType: tableau.dataTypeEnum.datetime},
+                    
+            
+                    {id: "encounter_id", dataType: tableau.dataTypeEnum.int},
+                    {id: "admission_date", dataType: tableau.dataTypeEnum.datetime},
+                    {id: "discharge_date", dataType: tableau.dataTypeEnum.datetime},
+                    {id: "length_of_stay_days", dataType: tableau.dataTypeEnum.int},
+                    {id: "encounter_type", dataType: tableau.dataTypeEnum.string},
+                    {id: "patient_type", dataType: tableau.dataTypeEnum.string},
+                    {id: "discharge_disposition", dataType: tableau.dataTypeEnum.string},
+                    {id: "care_setting", dataType: tableau.dataTypeEnum.string},
+                    {id: "payer", dataType: tableau.dataTypeEnum.string},
+                    
+                    
+                    {id: "total_prescriptions", dataType: tableau.dataTypeEnum.int},
+                    {id: "unique_opioid_types", dataType: tableau.dataTypeEnum.int},
+                    {id: "rx_last_30_days", dataType: tableau.dataTypeEnum.int},
+                    {id: "rx_last_90_days", dataType: tableau.dataTypeEnum.int}
+                ];
+                
+                var tableSchema = {
+                    id: "opioidRiskData",
+                    alias: "Opioid Risk Dashboard Data",
+                    columns: cols
+                };
+                
+                schemaCallback([tableSchema]);
+            };
+            
+            myConnector.getData = function(table, doneCallback) {
+                var connectionData = JSON.parse(tableau.connectionData);
+                var patientId = connectionData.patientId;
+                var apiUrl = window.location.origin + '/api/tableau/patient/' + patientId;
+                
+                $.getJSON(apiUrl, function(resp) {
+                    var tableData = [];
+                    
+                    // Process the response data
+                    for (var i = 0; i < resp.length; i++) {
+                        tableData.push(resp[i]);
+                    }
+                    
+                    table.appendRows(tableData);
+                    doneCallback();
+                }).fail(function(jqXHR, textStatus, errorThrown) {
+                    var errorMsg = "Error fetching data: " + textStatus;
+                    if (jqXHR.responseJSON && jqXHR.responseJSON.error) {
+                        errorMsg = jqXHR.responseJSON.error;
+                    }
+                    tableau.abortWithError(errorMsg);
+                });
+            };
+            
+            tableau.registerConnector(myConnector);
+            
+            $(document).ready(function() {
+              
+                $("#submitButton").click(function() {
+                    var patientId = $("#patientId").val();
+                    
+                    if (!patientId || patientId.trim() === '') {
+                        $("#errorMsg").text("⚠️ Please enter a valid patient ID").show();
+                        return;
+                    }
+                    
+
+                    $("#errorMsg").hide();
+                    $("#loadingMsg").show();
+                    $("#submitButton").prop('disabled', true).text('Loading...');
+                    
+                    // Store patient ID in connection data
+                    tableau.connectionData = JSON.stringify({
+                        patientId: patientId
+                    });
+                    
+                    tableau.connectionName = "Opioid Risk - Patient " + patientId;
+                    tableau.submit();
+                });
+                
+                $("#patientId").keypress(function(e) {
+                    if (e.which == 13) {
+                        $("#submitButton").click();
+                    }
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
+

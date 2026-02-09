@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Opioid Risk Tableau Web Data Connector</title>
+    <script src="https://connectors.tableau.com/libs/tableauwdc-2.3.latest.js" type="text/javascript"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            color: #1e3c72;
+            margin-bottom: 10px;
+            text-align: center;
+            font-size: 2em;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #6c757d;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+
+        .info-section {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+        }
+
+        .info-section h3 {
+            color: #1976D2;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .info-section ul {
+            margin-left: 20px;
+            line-height: 1.8;
+            color: #495057;
+        }
+
+        .patient-input {
+            margin: 25px 0;
+        }
+
+        .patient-input label {
+            display: block;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .patient-input input {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            font-size: 1.1em;
+            transition: all 0.3s;
+        }
+
+        .patient-input input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1.1em;
+            transition: all 0.3s;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status {
+            text-align: center;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+
+        .field-list {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0 0 0;
+            font-size: 0.9em;
+        }
+
+        .field-list h4 {
+            margin-bottom: 10px;
+            color: #1e3c72;
+        }
+
+        .field-list code {
+            background: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #667eea;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 Opioid Risk Dashboard</h1>
+        <div class="subtitle">Tableau Web Data Connector</div>
+        
+        <div class="info-section">
+            <h3>📊 Individual Patient Risk Assessment</h3>
+            <ul>
+                <li><strong>Patient Demographics</strong> - Race, gender, age, insurance</li>
+                <li><strong>Medication Timeline</strong> - All opioid prescriptions with dates</li>
+                <li><strong>Calculated MME</strong> - Morphine equivalent per day (CDC standard)</li>
+                <li><strong>Risk Categories</strong> - Low, Moderate, High, Critical based on MME</li>
+                <li><strong>ML Predictions</strong> - Overdose and OUD risk flags</li>
+                <li><strong>Clinical Data</strong> - Pain scores, diagnoses, comorbidities</li>
+            </ul>
+        </div>
+
+        <div class="patient-input">
+            <label for="patientId">👤 Enter Patient ID:</label>
+            <input type="number" id="patientId" placeholder="e.g., 102" />
+        </div>
+
+        <button id="connectButton" onclick="connectToTableau()">Connect to Tableau</button>
+
+        <div class="status" id="status"></div>
+
+        <div class="field-list">
+            <h4>Key Calculated Fields:</h4>
+            <p>
+                <code>daily_mme</code> (Morphine Equivalent) • 
+                <code>mme_category</code> (Risk Level) • 
+                <code>medication_class</code> (Drug Type) • 
+                <code>potency</code> (Low/Moderate/High/Very High) • 
+                <code>high_mme_flag</code> (≥90 threshold) • 
+                <code>od_risk_flag</code> (ML Overdose Risk) • 
+                <code>oud_risk_flag</code> (ML OUD Risk) • 
+                <code>mental_health_dx</code> (F-code flag) • 
+                <code>pain_score</code> (0-10 scale)
+            </p>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            // Create the Tableau Web Data Connector
+            var myConnector = tableau.makeConnector();
+
+            myConnector.getSchema = function(schemaCallback) {
+                var cols = [
+                    // Patient Demographics
+                    { id: "patient_id", alias: "Patient ID", dataType: tableau.dataTypeEnum.int },
+                    { id: "race", alias: "Race", dataType: tableau.dataTypeEnum.string },
+                    { id: "gender", alias: "Gender", dataType: tableau.dataTypeEnum.string },
+                    { id: "marital_status", alias: "Marital Status", dataType: tableau.dataTypeEnum.string },
+                    { id: "age_in_years", alias: "Age", dataType: tableau.dataTypeEnum.int },
+                    { id: "insurance", alias: "Insurance Type", dataType: tableau.dataTypeEnum.string },
+                    
+                    // Encounter Details
+                    { id: "encounter_id", alias: "Encounter ID", dataType: tableau.dataTypeEnum.int },
+                    { id: "encounter_date", alias: "Encounter Date", dataType: tableau.dataTypeEnum.datetime },
+                    
+                    // Medication Details
+                    { id: "medication_row_id", alias: "Medication Row ID", dataType: tableau.dataTypeEnum.int },
+                    { id: "generic_name", alias: "Medication Name", dataType: tableau.dataTypeEnum.string },
+                    { id: "order_strength", alias: "Dose Strength", dataType: tableau.dataTypeEnum.string },
+                    { id: "frequency_desc", alias: "Frequency", dataType: tableau.dataTypeEnum.string },
+                    { id: "med_started_dt_tm", alias: "Medication Start Date", dataType: tableau.dataTypeEnum.datetime },
+                    { id: "med_stopped_dt_tm", alias: "Medication Stop Date", dataType: tableau.dataTypeEnum.datetime },
+                    
+                    // Calculated MME Fields
+                    { id: "daily_mme", alias: "Daily MME", dataType: tableau.dataTypeEnum.float },
+                    { id: "mme_category", alias: "MME Category", dataType: tableau.dataTypeEnum.string },
+                    { id: "mme_risk_level", alias: "MME Risk Level", dataType: tableau.dataTypeEnum.int },
+                    
+                    // Medication Classification
+                    { id: "medication_class", alias: "Medication Class", dataType: tableau.dataTypeEnum.string },
+                    { id: "potency", alias: "Potency", dataType: tableau.dataTypeEnum.string },
+                    { id: "potency_level", alias: "Potency Level", dataType: tableau.dataTypeEnum.int },
+                    
+                    // Risk Flags
+                    { id: "high_mme_flag", alias: "High MME Flag", dataType: tableau.dataTypeEnum.int },
+                    { id: "moderate_mme_flag", alias: "Moderate MME Flag", dataType: tableau.dataTypeEnum.int },
+                    { id: "od_risk_flag", alias: "Overdose Risk Flag", dataType: tableau.dataTypeEnum.int },
+                    { id: "oud_risk_flag", alias: "OUD Risk Flag", dataType: tableau.dataTypeEnum.int },
+                    
+                    // Clinical Data
+                    { id: "diagnosis_code", alias: "Diagnosis Code", dataType: tableau.dataTypeEnum.string },
+                    { id: "diagnosis_description", alias: "Diagnosis Description", dataType: tableau.dataTypeEnum.string },
+                    { id: "mental_health_dx", alias: "Mental Health Diagnosis", dataType: tableau.dataTypeEnum.int },
+                    { id: "substance_abuse_dx", alias: "Substance Abuse Diagnosis", dataType: tableau.dataTypeEnum.int },
+                    { id: "pain_score", alias: "Pain Score", dataType: tableau.dataTypeEnum.float }
+                ];
+
+                var tableSchema = {
+                    id: "opioid_risk_data",
+                    alias: "Opioid Risk Monitoring Data",
+                    columns: cols
+                };
+
+                schemaCallback([tableSchema]);
+            };
+
+            myConnector.getData = function(table, doneCallback) {
+                var apiUrl = tableau.connectionData;
+                
+                fetch(apiUrl)
+                    .then(response => response.json())
+                    .then(data => {
+                        var tableData = [];
+                        
+                        for (var i = 0; i < data.length; i++) {
+                            var row = data[i];
+                            tableData.push({
+                                "patient_id": 5001,
+                                "race": row.race,
+                                "gender": row.gender,
+                                "marital_status": row.marital_status,
+                                "age_in_years": row.age_in_years,
+                                "insurance": row.insurance,
+                                "encounter_id": row.encounter_id,
+                                "encounter_date": row.encounter_date,
+                                "medication_row_id": row.medication_row_id,
+                                "generic_name": row.generic_name,
+                                "order_strength": row.order_strength,
+                                "frequency_desc": row.frequency_desc,
+                                "med_started_dt_tm": row.med_started_dt_tm,
+                                "med_stopped_dt_tm": row.med_stopped_dt_tm,
+                                "daily_mme": row.daily_mme,
+                                "mme_category": row.mme_category,
+                                "mme_risk_level": row.mme_risk_level,
+                                "medication_class": row.medication_class,
+                                "potency": row.potency,
+                                "potency_level": row.potency_level,
+                                "high_mme_flag": row.high_mme_flag,
+                                "moderate_mme_flag": row.moderate_mme_flag,
+                                "od_risk_flag": row.od_risk_flag,
+                                "oud_risk_flag": row.oud_risk_flag,
+                                "diagnosis_code": row.diagnosis_code,
+                                "diagnosis_description": row.diagnosis_description,
+                                "mental_health_dx": row.mental_health_dx,
+                                "substance_abuse_dx": row.substance_abuse_dx,
+                                "pain_score": row.pain_score
+                            });
+                        }
+                        
+                        table.appendRows(tableData);
+                        doneCallback();
+                    })
+                    .catch(error => {
+                        tableau.abortWithError("Error loading data: " + error);
+                    });
+            };
+
+            tableau.registerConnector(myConnector);
+        })();
+
+        function connectToTableau() {
+            var status = document.getElementById('status');
+            var baseUrl = window.location.origin;
+            var patientId = document.getElementById('patientId').value;
+            
+            if (!patientId) {
+                status.className = 'status error';
+                status.textContent = '❌ Please enter a patient ID';
+                return;
+            }
+            
+            var apiUrl = baseUrl + '/tableau-data/' + patientId;
+            tableau.connectionData = apiUrl;
+            tableau.connectionName = "Opioid Risk - Patient " + patientId;
+            
+            status.className = 'status success';
+            status.textContent = '✓ Connecting to Tableau with patient ' + patientId + ' data...';
+            
+            setTimeout(() => {
+                tableau.submit();
+            }, 500);
+        }
+    </script>
+</body>
+</html>
+
